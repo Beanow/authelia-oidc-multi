@@ -5,6 +5,8 @@ An example of using an OAuth/OIDC client to authenticate a secondary root domain
 - Requires `docker` and `docker-compose`.
 - Requires your local DNS resolver to support `*.localhost` subdomains.
 - Assumes the `traefik` network name is not yet being used.
+- Assumes your `docker0` bridge network uses `172.17.0.1/16`.
+  (If not, update `extra_hosts` for the `second-auth` service accordingly.)
 
 ## Howto
 
