@@ -1,0 +1,154 @@
+version: "3.8"
+services:
+  traefik:
+    image: traefik:2.6
+    command:
+      - --log.level=INFO
+      - --accesslog=true
+      - --api.dashboard=true
+      - --api.insecure=true
+
+      - --providers.file.watch=true
+      - --providers.file.directory=/config.d/
+      - --providers.docker
+      - --providers.docker.watch=true
+      - --providers.docker.network=traefik
+      - --providers.docker.exposedByDefault=false
+
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entryPoint.to=websecure
+      - --entrypoints.web.http.redirections.entryPoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    configs:
+      - source: traefik-config.yml
+        target: /config.d/traefik.yml
+      - source: first.localhost.crt
+        target: /certs/first.localhost.crt
+      - source: second.localhost.crt
+        target: /certs/second.localhost.crt
+    secrets:
+      - source: first.localhost.key
+        target: /certs/first.localhost.key
+      - source: second.localhost.key
+        target: /certs/second.localhost.key
+    networks:
+      - default
+      - traefik
+    ports:
+      - 80:80
+      - 443:443
+      - 8080:8080
+    restart: unless-stopped
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik
+      traefik.http.routers.traefik.rule: Host(`traefik.first.localhost`)
+      traefik.http.routers.traefik.middlewares: authelia
+      traefik.http.routers.traefik.service: api@internal
+      # Dummy port for traefik known issue with docker provider, actual port doesn't matter.
+      # traefik.http.services.dummy.loadbalancer.server.port: 8080
+
+  authelia:
+    image: authelia/authelia:4
+    command: authelia --config /config/authelia.yml
+    configs:
+      - source: authelia-config.yml
+        target: /config/authelia.yml
+    secrets:
+      - source: authelia-users.yml
+        target: /config/users.yml
+        mode: 0400
+    networks:
+      - traefik
+    healthcheck:
+      # Default start period (1 minute) delays traefik adding this route and middleware.
+      start_period: 2s
+    restart: unless-stopped
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik
+      traefik.http.routers.authelia.rule: Host(`authelia.first.localhost`)
+      traefik.http.services.authelia.loadbalancer.server.port: 9091
+      # Define auth middleware
+      traefik.http.middlewares.authelia.forwardauth.address: http://authelia.traefik:9091/api/verify?rd=https://authelia.first.localhost
+      traefik.http.middlewares.authelia.forwardauth.trustForwardHeader: "true"
+      traefik.http.middlewares.authelia.forwardauth.authResponseHeaders: Remote-User,Remote-Groups,Remote-Name,Remote-Email
+
+  second-auth:
+    image: thomseddon/traefik-forward-auth:2
+    command:
+      - --log-level=info
+      - --secret=INSECURE_cookie_secret_0Lap2y4itQv7QKUsj2CS
+      - --cookie-domain=second.localhost
+      - --auth-host=auth.second.localhost
+      - --cookie-name=second_domain_auth
+      - --csrf-cookie-name=second_domain_auth_csrf
+      - --default-provider=oidc
+      # We need to use the public url (i.e. http://authelia.traefik:9091) or the user is redirected to this as well.
+      # This is also why we need self-signed certificates to work.
+      - --providers.oidc.issuer-url=https://authelia.first.localhost
+      - --providers.oidc.client-id=insecure-second-domain
+      - --providers.oidc.client-secret=be_sure_not_to_use_MbBP1ijB3huY6QYHha7G
+    networks:
+      - traefik
+    # The docker internal DNS will trip over *.localhost type domains, specify it manually.
+    extra_hosts:
+      - "authelia.first.localhost:172.17.0.1"
+    configs:
+      # This will enable our self-signed certificates.
+      - source: ca.crt
+        target: /etc/ssl/certs/ca.crt
+    restart: unless-stopped
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik
+      traefik.http.routers.auth.rule: Host(`auth.second.localhost`)
+      # NOTE: must apply middleware to ourself itself. Or we'll have redirect loops.
+      traefik.http.routers.auth.middlewares: second-auth
+      traefik.http.services.auth.loadbalancer.server.port: 4181
+      traefik.http.middlewares.second-auth.forwardauth.address: http://second-auth.traefik:4181
+      traefik.http.middlewares.second-auth.forwardauth.authResponseHeaders: X-Forwarded-User
+
+  whoami:
+    image: traefik/whoami
+    command: --port 9000
+    networks:
+      - traefik
+    restart: unless-stopped
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik
+      traefik.http.routers.whoami-first.rule: Host(`whoami.first.localhost`)
+      traefik.http.routers.whoami-first.middlewares: authelia
+      traefik.http.routers.whoami-second.rule: Host(`whoami.second.localhost`)
+      traefik.http.routers.whoami-second.middlewares: second-auth
+      traefik.http.services.whoami.loadbalancer.server.port: 9000
+
+configs:
+  authelia-config.yml:
+    file: ./authelia-config.yml
+  traefik-config.yml:
+    file: ./traefik-config.yml
+  ca.crt:
+    file: ./certs/ca.crt
+  first.localhost.crt:
+    file: ./certs/server_first.localhost.crt
+  second.localhost.crt:
+    file: ./certs/server_second.localhost.crt
+
+secrets:
+  authelia-users.yml:
+    file: ./authelia-users.yml
+  first.localhost.key:
+    file: ./certs/server_first.localhost.key
+  second.localhost.key:
+    file: ./certs/server_second.localhost.key
+
+networks:
+  default:
+  traefik:
+    name: traefik
+    internal: false

@@ -1,0 +1,81 @@
+jwt_secret: a_very_important_secret
+default_redirection_url: https://authelia.first.localhost
+
+server:
+  host: 0.0.0.0
+  port: 9091
+
+log:
+  level: debug
+
+totp:
+  issuer: authelia.first.localhost
+
+authentication_backend:
+  file:
+    path: /config/users.yml
+
+access_control:
+  default_policy: one_factor
+
+session:
+  name: authelia_session
+  secret: unsecure_session_secret
+  expiration: 3600  # 1 hour
+  inactivity: 300  # 5 minutes
+  domain: first.localhost  # Should match whatever your root protected domain is
+
+regulation:
+  max_retries: 3
+  find_time: 120
+  ban_time: 300
+
+storage:
+  encryption_key: you_must_generate_a_random_string_of_more_than_twenty_chars_and_configure_this
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /config/notification.txt
+
+identity_providers:
+  oidc:
+    clients:
+      - id: insecure-second-domain
+        description: "*.second.localhost Forward Auth container"
+        secret: be_sure_not_to_use_MbBP1ijB3huY6QYHha7G
+        public: false
+        authorization_policy: one_factor
+        redirect_uris:
+          - https://auth.second.localhost/_oauth
+    hmac_secret: this_is_a_secret_abc123abc123abc
+    # GENERATE YOUR OWN
+    issuer_private_key: |
+      -----BEGIN RSA PRIVATE KEY-----
+      MIIEowIBAAKCAQEArqkN0nYhu3QK2PNu3DG/YSWSaLy8fBJc2XSirNYwMfKcMNDD
+      I4ffo2yYKR0BFaPB/dPLc7sKkYJ3pOV6SG/AHwEJNd64vUtVzroOGgvJ1W1/CRNH
+      OBqyepAB5qpN4D1AOW35X2ONBa6mb3/sfshiuB084GzxVkxjfxeGWfmX7767yp+f
+      gbk9L3dA/y4jC2MlOXM/ikzUfKr/D8nOhHwteIZGBa+ESg7QEOnRq6j58WoF7v3q
+      A+gJr+1QmdiRdcnnWgriLQIEEw/L9nEDkMwW72IlXWxCIdfRIJBrqOuKlCFC0WtW
+      jU2LgmykE+U+XvqdOyupEACvlN1lBalFdgxCRQIDAQABAoIBAQCCIejvfx7A6MPQ
+      Qwe9Pb+GpRTBvqV8l73gMzulJOzBui5PXKuXxHuG6rkwILEXK2y1LuEuOBS2t4tn
+      K6cBY2m0b/Qp0+i2+PNU1GD/XPsjbrKw01FD5vhFwxf3gboGMfyxDVQ4kxaWPjs5
+      ZgmRqMGMxhP+bo0drEqRfbiXPxTKBYnWxI7nmcIb5RgymIYGpOhmPb8SguG9QaFU
+      l9Vch5QtvHRKT/zbbxngIllKdbwJZRNOAquab61bGamS8L4NQ99cM9Oq/lFgm65W
+      hpZ/N3yz7PD9qleWc8Y3VV7Q4MaUNRD2JRF7aIlSljB50SF3xCrc3xOCYja6lQky
+      Cf/NTwz9AoGBAMt4tEATOynRyxrIWz2GCxpuMPCbkSO0fQyU1Qvbz8KgWkeq5FpB
+      y6hEGU0nsa8gBzY0WMJh6VScSuKcTBFCqKw/TI1R+WlrdWVrZGsLvpzEg/rwUPPj
+      /jFF4M+B1pQV/MudfOavQWZlLp7BrHyK+lLjXcvDvXZt/bMHVhFSqi43AoGBANvA
+      PcUmvHoQPEXh2E8hdBXpxBozAp0YNWuabCTkHH0aeAOKfwsU9z+wsOgabF8eB5lZ
+      t3WbsmeoW0QKK/srUt3FoZCigYbr1nJL4RdNQ6VnDThdE+Vwe6eLeun4VDA/U0MJ
+      OTd/6xniL1HW8I1PylwcTzEF1RvBscu9ifR1LTVjAoGAQJb8gSqZqVjTpJjdfdZD
+      SAyatIZtuGvfFlNYnf8VIK9OeVmiS5R/VdboQTnMic8c+vP7CRmTvCwxCWacLw5+
+      BM/DOUlAZ1qZVayVn/WGeLVZQBtxVzqUwodwKe8JctDYArrnn0Ma+6o69mJ8orxr
+      YkySxdBJIIMh+ebmR3F6XFkCgYBZvsg7VReSTkEfVR3vKz1qmZ7SCFUf7Twb5uQV
+      qOeNnBq5b310/CoB49pL4Ea0DeKSmVZYfK6+sL4dKn5NxKLCGa1jEUsO3BAne5/A
+      0Xg3+78lbrXqdSa7BTa8iQNw9Nu/O+wXI3HTj1E9/icdvyFovtMEtVoUTOWczJqj
+      sJs2+wKBgGbsLHhPnjJeWrMqeOLTmZbOysNZ4W+Dr8CzAkkBxeLqGRkMUxdUMYVO
+      lQj1MD7oluXXqHTDWzz0NJ4D77MhswqjlLyHkvtEff9dwi0WLVlGj9ZnR1ytm5/S
+      qqnVNWJTLYx72rWKEC3I5A6u6nsPuU+/ikS4pO7fa4U0V6yIpca4
+      -----END RSA PRIVATE KEY-----

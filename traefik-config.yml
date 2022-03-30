@@ -1,0 +1,6 @@
+tls:
+  certificates:
+    - certFile: /certs/first.localhost.crt
+      keyFile: /certs/first.localhost.key
+    - certFile: /certs/second.localhost.crt
+      keyFile: /certs/second.localhost.key
