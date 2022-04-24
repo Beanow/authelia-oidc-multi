@@ -6,7 +6,7 @@ server:
   port: 9091
 
 log:
-  level: debug
+  level: trace
 
 totp:
   issuer: authelia.first.localhost
@@ -49,6 +49,7 @@ identity_providers:
         authorization_policy: one_factor
         redirect_uris:
           - https://auth.second.localhost/_oauth
+        pre_configured_consent_duration: 8h
     hmac_secret: this_is_a_secret_abc123abc123abc
     # GENERATE YOUR OWN
     issuer_private_key: |
